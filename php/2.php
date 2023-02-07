@@ -9,7 +9,7 @@ class User
     /**
      * @var PDO
      */
-    public static $instance;
+     private static PDO|null $instance = null;
 
     /**
      * Реализация singleton
@@ -30,23 +30,32 @@ class User
     /**
      * Возвращает список пользователей старше заданного возраста.
      * @param int $ageFrom
+     * @param int $limit
      * @return array
      */
-    public static function getUsers(int $ageFrom): array
+    public static function getUsers(int $ageFrom, int $limit): array
     {
-        $stmt = self::getInstance()->prepare("SELECT id, name, lastName, from, age, settings FROM Users WHERE age > {$ageFrom} LIMIT " . \Manager\User::limit);
-        $stmt->execute();
+        $stmt = self::getInstance()->prepare("
+                SELECT `id`, `name`, `lastName`, `from`, `age`, `settings` 
+                FROM Users 
+                WHERE `age` > :ageFrom 
+                LIMIT :limit
+                ");
+        $stmt->execute(['ageFrom' => $ageFrom, 'limit' => $limit]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $users = [];
         foreach ($rows as $row) {
             $settings = json_decode($row['settings']);
+            if (!is_array($settings)) {
+                $settings = [];
+            }
             $users[] = [
                 'id' => $row['id'],
                 'name' => $row['name'],
                 'lastName' => $row['lastName'],
                 'from' => $row['from'],
                 'age' => $row['age'],
-                'key' => $settings['key'],
+                'key' => $settings['key'] ?? null,
             ];
         }
 
@@ -60,8 +69,12 @@ class User
      */
     public static function user(string $name): array
     {
-        $stmt = self::getInstance()->prepare("SELECT id, name, lastName, from, age, settings FROM Users WHERE name = {$name}");
-        $stmt->execute();
+        $stmt = self::getInstance()->prepare("
+                SELECT `id`, `name`, `lastName`, `from`, `age`, `settings` 
+                FROM Users 
+                WHERE `name` = :name
+                ");
+        $stmt->execute(['name' => $name]);
         $user_by_name = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return [
@@ -78,12 +91,15 @@ class User
      * @param string $name
      * @param string $lastName
      * @param int $age
-     * @return string
+     * @return string|bool
      */
-    public static function add(string $name, string $lastName, int $age): string
+    public static function add(string $name, string $lastName, int $age): string|false
     {
-        $sth = self::getInstance()->prepare("INSERT INTO Users (name, lastName, age) VALUES (:name, :age, :lastName)");
-        $sth->execute([':name' => $name, ':age' => $age, ':lastName' => $lastName]);
+        $sth = self::getInstance()->prepare("
+            INSERT INTO Users (`name`, `lastName`, `age`) 
+            VALUES (:name, :lastName, :age)
+            ");
+        $sth->execute(['name' => $name, 'age' => $age, 'lastName' => $lastName]);
 
         return self::getInstance()->lastInsertId();
     }

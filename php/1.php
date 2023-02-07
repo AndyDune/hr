@@ -4,7 +4,7 @@ namespace Manager;
 
 class User
 {
-    const limit = 10;
+    public const limit = 10;
 
     /**
      * Возвращает пользователей старше заданного возраста.
@@ -13,19 +13,18 @@ class User
      */
     function getUsers(int $ageFrom): array
     {
-        $ageFrom = (int)trim($ageFrom);
-
-        return \Gateway\User::getUsers($ageFrom);
+        return \Gateway\User::getUsers($ageFrom, static::limit);
     }
 
     /**
      * Возвращает пользователей по списку имен.
+     * @param array $names
      * @return array
      */
-    public static function getByNames(): array
+    public function getByNames(array $names): array
     {
         $users = [];
-        foreach ($_GET['names'] as $name) {
+        foreach ($names as $name) {
             $users[] = \Gateway\User::user($name);
         }
 
@@ -40,8 +39,8 @@ class User
     public function users($users): array
     {
         $ids = [];
-        \Gateway\User::getInstance()->beginTransaction();
         foreach ($users as $user) {
+            \Gateway\User::getInstance()->beginTransaction();
             try {
                 \Gateway\User::add($user['name'], $user['lastName'], $user['age']);
                 \Gateway\User::getInstance()->commit();
